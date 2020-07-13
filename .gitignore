@@ -2,3 +2,6 @@ keycloak-*.gem
 .rspec_status
 
 .idea
+example/tmp
+example/keycloak.json
+example/log

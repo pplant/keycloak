@@ -534,3 +534,7 @@ Keycloak::Internal.has_role?(user_id, user_role, client_id = '', secret = '')
 ```
 
 `has_role?` informing the user represented by the `user_id` parameter has <b>role</b> with the name represented by the `user_role` parameter.
+
+## Example
+
+* [Example app](https://github.com/imagov/keycloak/blob/master/example/README.md)
