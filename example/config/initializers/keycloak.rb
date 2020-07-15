@@ -1,1 +1,1 @@
-Keycloak.proxy = "https://google.com"
+#Keycloak.proxy = "proxy-hostname.local"

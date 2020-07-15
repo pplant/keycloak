@@ -20,31 +20,25 @@ module Keycloak
                   :proc_external_attributes
   end
 
-  module Base
-
-    def config
-      Thread.current[:keycloak_config] ||= Keycloak::Config.new
-    end
-
-    def proc_cookie_token
-      config.proc_cookie_token
-    end
-
-    def proc_cookie_token=(value)
-      config.proc_cookie_token = value
-    end
-
-    def proc_external_attributes
-      config.proc_external_attributes
-    end
-
-    def proc_external_attributes=(value)
-      config.proc_external_attributes = value
-    end
-
+  def self.config
+    Thread.current[:keycloak_config] ||= Keycloak::Config.new
   end
-  
-  extend Base
+
+  def self.proc_cookie_token
+    config.proc_cookie_token
+  end
+
+  def self.proc_cookie_token=(value)
+    config.proc_cookie_token = value
+  end
+
+  def self.proc_external_attributes
+    config.proc_external_attributes
+  end
+
+  def self.proc_external_attributes=(value)
+    config.proc_external_attributes = value
+  end
 
   class << self
     attr_accessor :proxy, :generate_request_exception, :keycloak_controller,
@@ -70,7 +64,21 @@ module Keycloak
     @installation_file = file || KEYCLOAK_JSON_FILE
   end
 
+  module Base
+    
+    def http_client
+      if isempty?(Keycloak.proxy)
+        HTTP
+      else
+        HTTP.via(Keycloak.proxy, "8080", "user") 
+      end
+    end
+
+  end
+
   module Client
+    extend Base
+
     class << self
       attr_accessor :realm, :auth_server_url
       attr_reader :client_id, :secret, :configuration, :public_key
@@ -124,7 +132,7 @@ module Keycloak
                   'subject_token' => issuer_token}
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
       _request = -> do
-        HTTP.headers(header)
+        http_client.headers(header)
             .post(token_endpoint, form: payload)
       end
 
@@ -140,7 +148,7 @@ module Keycloak
       payload = { 'access_token' => access_token }
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
       _request = -> do
-        HTTP.headers(header)
+        http_client.headers(header)
             .post(userinfo_endpoint, form: payload)
       end
 
@@ -193,7 +201,7 @@ module Keycloak
                  'authorization' => authorization }
 
       _request = -> do
-        HTTP.headers(header)
+        http_client.headers(header)
             .post(token_introspection_endpoint, form: payload)
       end
 
@@ -234,7 +242,7 @@ module Keycloak
                     end
 
         _request = -> do
-          HTTP.headers(header)
+          http_client.headers(header)
               .post(final_url, form: payload)
         end
 
@@ -261,7 +269,7 @@ module Keycloak
       header = { 'Content-Type' => 'application/x-www-form-urlencoded' }
 
       _request = -> do
-        HTTP.headers(header)
+        http_client.headers(header)
             .post(userinfo_endpoint, form: payload)
       end
 
@@ -391,12 +399,9 @@ module Keycloak
       end
 
       def self.openid_configuration
-        Rails.logger.info "open id config"
-        request = HTTP.via = Keycloak.proxy unless isempty?(Keycloak.proxy)
         config_url = "#{@auth_server_url}/realms/#{@realm}/.well-known/openid-configuration"
         _request = -> do
-          Rails.logger.info "default options #{HTTP.default_options.proxy}"
-          HTTP.get(config_url)
+          http_client.get(config_url)
         end
         response = exec_request _request
         if response.status == 200
@@ -410,7 +415,7 @@ module Keycloak
         header = {'Content-Type' => 'application/x-www-form-urlencoded'}
 
         _request = -> do
-          HTTP.headers(header)
+          http_client.headers(header)
               .post(@configuration['token_endpoint'], form: payload)
         end
 
@@ -430,6 +435,8 @@ module Keycloak
 
   # Os recursos desse module (admin) serão utilizadas apenas por usuários que possuem as roles do client realm-management
   module Admin
+    extend Base
+
     class << self
     end
 
@@ -922,7 +929,7 @@ module Keycloak
           header = {'Content-Type' => 'application/x-www-form-urlencoded'}
 
           _request = -> do
-            HTTP.headers(header)
+            http_client.headers(header)
                 .post(Keycloak::Client.configuration['token_endpoint'], form: payload)
           end
 
@@ -942,7 +949,7 @@ module Keycloak
 
             header = {'Content-Type' => 'application/x-www-form-urlencoded'}
             _request = -> do
-              HTTP.headers(header)
+              http_client.headers(header)
                   .post(Keycloak::Client.configuration['end_session_endpoint'], form: payload)
             end
             response = Keycloak::Client.exec_request _request
@@ -974,7 +981,7 @@ module Keycloak
       case method.upcase
       when 'GET'
         _request = -> do
-          response = HTTP.headers(header)
+          response = http_client.headers(header)
                          .get(final_url)
           rescue_response(response)
         end
@@ -984,12 +991,12 @@ module Keycloak
         _request = -> do
           case method.upcase
           when 'POST'
-            response = HTTP.headers(header)
+            response = http_client.headers(header)
                            .post(final_url, form: payload, params: parameters)
 
             rescue_response(response)
           else
-            response = HTTP.headers(header)
+            response = http_client.headers(header)
                            .put(final_url, form: payload, params: parameters)
             
             rescue_response(response)
@@ -999,7 +1006,7 @@ module Keycloak
         _request = -> do
           header["Content-Type"] = 'application/json'
           parameters = JSON.generate body_parameter if body_parameter
-          response = HTTP.headers(header)
+          response = http_client.headers(header)
                          .delete(final_url, params: parameters)
           rescue_response(response)
         end
