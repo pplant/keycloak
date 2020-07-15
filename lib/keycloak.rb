@@ -386,9 +386,11 @@ module Keycloak
       end
 
       def self.openid_configuration
-        RestClient.proxy = Keycloak.proxy unless isempty?(Keycloak.proxy)
+        Rails.logger.info "open id config"
+        request = HTTP.via = Keycloak.proxy unless isempty?(Keycloak.proxy)
         config_url = "#{@auth_server_url}/realms/#{@realm}/.well-known/openid-configuration"
         _request = -> do
+          Rails.logger.info "default options #{HTTP.default_options.proxy}"
           HTTP.get(config_url)
         end
         response = exec_request _request

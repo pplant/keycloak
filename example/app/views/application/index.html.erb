@@ -1,0 +1,28 @@
+<h1>Keycloak example app</h1>
+
+<h3> User info </h3>
+<ul>
+  <li><%= Keycloak::Client.get_attribute("sub") %></li>
+  <li><%= Keycloak::Client.get_attribute("email") %></li>
+  <li><%= Keycloak::Client.get_attribute("preferred_username") %></li>
+  <li><%= Keycloak::Client.get_attribute("family_name") %></li>
+  <li><%= Keycloak::Client.get_attribute("given_name") %></li>
+</ul>
+
+<h3> Token info </h3>
+<li><%= "exp: #{Time.strptime(Keycloak::Client.get_attribute("exp").to_s, "%s")}" %></li>
+<li><%= "iat: #{Time.strptime(Keycloak::Client.get_attribute("iat").to_s, "%s")}" %></li>
+<li><%= "iat: #{Keycloak::Client.get_attribute("iss")}" %></li>
+<li><%= "scope: #{Keycloak::Client.get_attribute("scope")}" %></li>
+<li>roles:
+  <% roles = Keycloak::Client.get_attribute("resource_access")["account"]["roles"] rescue [] %>
+  <ul>
+  <% roles.each do |role| %>
+    <li><%= role%></li>
+  <% end %> 
+  </ul>
+</li>
+
+<%= Keycloak::Client.get_token_introspection %>
+<%= Keycloak::Client.get_userinfo_issuer %>
+<%= Keycloak::Client.get_token_by_client_credentials %>
