@@ -67,11 +67,16 @@ module Keycloak
   module Base
     
     def http_client
-      if isempty?(Keycloak.proxy)
-        HTTP
-      else
-        HTTP.via(Keycloak.proxy, "8080", "user") 
-      end
+      HTTP 
+
+      # TODO implement the proxy url parsing and passing it to the via function
+      # if present
+      #
+      # if isempty?(Keycloak.proxy)
+      #   HTTP
+      # else
+      #   HTTP.via(Keycloak.proxy, "8080", "user") 
+      # end
     end
 
   end
@@ -416,7 +421,7 @@ module Keycloak
 
         _request = -> do
           http_client.headers(header)
-              .post(@configuration['token_endpoint'], form: payload)
+                     .post(@configuration['token_endpoint'], form: payload)
         end
 
         response = exec_request _request
@@ -1026,15 +1031,13 @@ module Keycloak
           response.body
         end
       when 400..499
-        response.return!
+        raise HTTP::ResponsError.new(response.status.reason)
       else
         if Keycloak.explode_exception
-          response.return!
+          raise HTTP::ResponsError.new(response.status.reason)
         else
           begin
-            response.return!
-          rescue ResponseError => err
-            err.response
+            response.body
           rescue StandardError => e
             e.message
           end
